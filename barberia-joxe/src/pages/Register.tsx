@@ -15,6 +15,7 @@ export default function Register() {
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -24,6 +25,7 @@ export default function Register() {
         e.preventDefault();
         setLoading(true);
         setError(null);
+        setSuccessMessage(null);
 
         // Basic Validation
         if (formData.password.length < 6) {
@@ -46,12 +48,10 @@ export default function Register() {
 
             if (authError) throw authError;
 
-            if (authData.user) {
-                // 2. Create profile entry manually (since we want to ensure it matches specific fields)
-                // Note: Ideally this is done via a Trigger on the DB side (migration best practice), 
-                // but explicit insert here allows us to pass extra fields easily if we didn't set up the trigger metadata mapping perfectly.
+            if (authData.user && authData.session) {
+                // 2. Create profile entry manually (only possible if logged in/session exists due to RLS)
+                // Note: Ideally this is done via a Trigger on the DB side.
                 // However, we have an RLS policy "Users can insert own profile".
-
 
                 const { error: profileError } = await supabase.from('profiles').insert({
                     id: authData.user.id,
@@ -63,24 +63,15 @@ export default function Register() {
 
                 if (profileError) {
                     console.error('Profile creation error:', profileError);
-                    // Non-blocking error for user (account created technically), but we should warn or handle.
                 }
 
                 // Explicitly redirect to home (reserva)
-                // The Session logic in AuthContext will also likely trigger a redirect via PublicRoute,
-                // but this ensures we have an immediate action if the component is still mounted.
-                // We need to import useNavigate first.
-                // NOTE: I will add the import in a separate tool call if needed, but since I can't do it here easily without touching the top of the file,
-                // I'll rely on the existing navigate behavior or reload the page if needed, but actually
-                // I should add `useNavigate` hook usage. 
-                // Wait, I can't import useNavigate inside the function.
-                // I will use window.location.href = '/' as a hard redirect fallback or just let AuthContext handle it.
-                // Actually, the user requirement is "se inicie la sesión automaticamente... llevandolo de nuevo al apartado inicial".
-                // Since AuthContext listens to onAuthStateChange, and signUp returns a session, the AuthContext WILL update `user`.
-                // PublicRoute, invalidating the current route (/register), will redirect to /.
-                // So I might not strictly *need* to add code here if the architecture is sound.
-                // However, I'll add a check to ensure we don't sit on a loading state forever if something weird happens.
                 navigate('/');
+            } else if (authData.user && !authData.session) {
+                // Email confirmation is enabled and required
+                setSuccessMessage('¡Cuenta creada con éxito! Por favor, revisa tu correo electrónico para confirmar tu cuenta antes de iniciar sesión.');
+                // We cannot create the profile here because we don't have a session (RLS blocks insert).
+                // The profile will need to be created via a Trigger or upon first login if not present.
             }
 
         } catch (err: any) {
@@ -104,6 +95,13 @@ export default function Register() {
                     <div className="bg-red-500/10 border border-red-500/50 text-red-500 p-4 rounded-lg mb-6 flex items-center gap-2">
                         <AlertCircle size={20} />
                         <span>{error}</span>
+                    </div>
+                )}
+
+                {successMessage && (
+                    <div className="bg-green-500/10 border border-green-500/50 text-green-500 p-4 rounded-lg mb-6 flex items-center gap-2">
+                        <AlertCircle size={20} />
+                        <span>{successMessage}</span>
                     </div>
                 )}
 
