@@ -24,8 +24,7 @@ export default function Home() {
                         {user ? (
                             <>
                                 <div className="hidden md:block text-right">
-                                    <p className="text-sm text-zinc-400">Bienvenido,</p>
-                                    <p className="text-sm font-bold text-white">{userName}</p>
+                                    <p className="text-sm font-bold text-white">Bienvenido {userName}</p>
                                 </div>
                                 <button
                                     onClick={signOut}

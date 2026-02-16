@@ -1,10 +1,11 @@
 
 import React, { useState } from 'react';
 import { supabase } from '../services/supabase';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, User, Calendar, Phone, AlertCircle } from 'lucide-react';
 
 export default function Register() {
+    const navigate = useNavigate();
     const [formData, setFormData] = useState({
         fullName: '',
         email: '',
@@ -36,6 +37,11 @@ export default function Register() {
             const { data: authData, error: authError } = await supabase.auth.signUp({
                 email: formData.email,
                 password: formData.password,
+                options: {
+                    data: {
+                        full_name: formData.fullName,
+                    },
+                },
             });
 
             if (authError) throw authError;
@@ -46,10 +52,11 @@ export default function Register() {
                 // but explicit insert here allows us to pass extra fields easily if we didn't set up the trigger metadata mapping perfectly.
                 // However, we have an RLS policy "Users can insert own profile".
 
+
                 const { error: profileError } = await supabase.from('profiles').insert({
                     id: authData.user.id,
                     full_name: formData.fullName,
-                    email: formData.email, // Storing email in profile for convenience, though it's in auth.users
+                    // email removed as it does not exist in profiles table
                     phone: formData.phone,
                     birth_date: formData.birthDate,
                 });
@@ -57,8 +64,23 @@ export default function Register() {
                 if (profileError) {
                     console.error('Profile creation error:', profileError);
                     // Non-blocking error for user (account created technically), but we should warn or handle.
-                    // For now, let's assume if auth worked, they are logged in.
                 }
+
+                // Explicitly redirect to home (reserva)
+                // The Session logic in AuthContext will also likely trigger a redirect via PublicRoute,
+                // but this ensures we have an immediate action if the component is still mounted.
+                // We need to import useNavigate first.
+                // NOTE: I will add the import in a separate tool call if needed, but since I can't do it here easily without touching the top of the file,
+                // I'll rely on the existing navigate behavior or reload the page if needed, but actually
+                // I should add `useNavigate` hook usage. 
+                // Wait, I can't import useNavigate inside the function.
+                // I will use window.location.href = '/' as a hard redirect fallback or just let AuthContext handle it.
+                // Actually, the user requirement is "se inicie la sesión automaticamente... llevandolo de nuevo al apartado inicial".
+                // Since AuthContext listens to onAuthStateChange, and signUp returns a session, the AuthContext WILL update `user`.
+                // PublicRoute, invalidating the current route (/register), will redirect to /.
+                // So I might not strictly *need* to add code here if the architecture is sound.
+                // However, I'll add a check to ensure we don't sit on a loading state forever if something weird happens.
+                navigate('/');
             }
 
         } catch (err: any) {

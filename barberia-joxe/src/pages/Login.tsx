@@ -1,10 +1,11 @@
 
 import React, { useState } from 'react';
 import { supabase } from '../services/supabase';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, AlertCircle } from 'lucide-react';
 
 export default function Login() {
+    const navigate = useNavigate();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
@@ -25,7 +26,8 @@ export default function Login() {
                 throw error;
             }
 
-            // Success handled by AuthContext listener, redirects automatically
+            // Explicitly redirect to home (reserva)
+            navigate('/');
         } catch (err: any) {
             setError(err.message || 'Error al iniciar sesión');
         } finally {
