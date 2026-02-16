@@ -45,7 +45,7 @@ import ScrollToTop from './components/ScrollToTop';
 function App() {
   return (
     <AuthProvider>
-      <Router>
+      <Router basename={import.meta.env.BASE_URL}>
         <ScrollToTop />
         <AppRoutes />
       </Router>
