@@ -161,9 +161,14 @@ export default function TimeSelect() {
                     {timeSlots.map((time) => {
                         const isOccupied = occupiedSlots.includes(time);
                         // Disable past times if today
+                        // Correctly combine selectedDate with the hour
                         const [hour] = time.split(':').map(Number);
-                        const slotDate = setHours(setMinutes(selectedDate, 0), hour);
-                        const isPast = isBefore(slotDate, new Date());
+                        const slotDate = setHours(setMinutes(new Date(selectedDate), 0), hour);
+
+                        // Check if the slot is in the past
+                        // We use new Date() for "now"
+                        const now = new Date();
+                        const isPast = isBefore(slotDate, now);
 
                         return (
                             <button

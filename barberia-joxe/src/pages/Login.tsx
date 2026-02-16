@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { supabase } from '../services/supabase';
+import { authService } from '../services/auth';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, AlertCircle } from 'lucide-react';
 
@@ -17,10 +17,11 @@ export default function Login() {
         setError(null);
 
         try {
-            const { error } = await supabase.auth.signInWithPassword({
-                email,
-                password,
-            });
+            const { user, session } = await authService.signIn(email, password);
+
+            if (!user || !session) {
+                throw new Error('Error al iniciar sesión');
+            }
 
             if (error) {
                 throw error;

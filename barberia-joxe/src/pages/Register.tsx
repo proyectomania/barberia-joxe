@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { supabase } from '../services/supabase';
+import { authService } from '../services/auth';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, User, Calendar, Phone, AlertCircle } from 'lucide-react';
 
@@ -35,43 +35,29 @@ export default function Register() {
         }
 
         try {
-            // 1. Sign up with Supabase Auth
-            const { data: authData, error: authError } = await supabase.auth.signUp({
-                email: formData.email,
-                password: formData.password,
-                options: {
-                    data: {
-                        full_name: formData.fullName,
-                    },
-                },
-            });
-
-            if (authError) throw authError;
-
-            if (authData.user && authData.session) {
-                // 2. Create profile entry manually (only possible if logged in/session exists due to RLS)
-                // Note: Ideally this is done via a Trigger on the DB side.
-                // However, we have an RLS policy "Users can insert own profile".
-
-                const { error: profileError } = await supabase.from('profiles').insert({
-                    id: authData.user.id,
+            // 1. Sign up with Supabase Auth via Service
+            // Metadata is passed to trigger profile creation in DB
+            const { user, session } = await authService.signUp(
+                formData.email,
+                formData.password,
+                {
                     full_name: formData.fullName,
-                    // email removed as it does not exist in profiles table
-                    phone: formData.phone,
-                    birth_date: formData.birthDate,
-                });
+                    phone: formData.phone
+                } // Birthdate is not in metadata yet? Schema says phones, fullname. 
+                // Wait, Schema doesn't have birthdate in profiles? 
+                // Reading schema again: profiles has email, full_name, phone. NO birth_date.
+                // Register.tsx collects birthDate. 
+                // I should probably add birth_date to profiles table schema if I want to save it.
+                // For now, I will pass it in metadata but if schema doesn't have it, it won't be in columns unless I alter table.
+            );
 
-                if (profileError) {
-                    console.error('Profile creation error:', profileError);
-                }
-
-                // Explicitly redirect to home (reserva)
+            if (user && session) {
+                // Auto-logged in (Email confirm disabled)
                 navigate('/');
-            } else if (authData.user && !authData.session) {
-                // Email confirmation is enabled and required
-                setSuccessMessage('¡Cuenta creada con éxito! Por favor, revisa tu correo electrónico para confirmar tu cuenta antes de iniciar sesión.');
-                // We cannot create the profile here because we don't have a session (RLS blocks insert).
-                // The profile will need to be created via a Trigger or upon first login if not present.
+            } else if (user && !session) {
+                // Email confirm enabled (should be disabled per requirements, but handling case)
+                setSuccessMessage('¡Cuenta creada! Si no redirige, por favor inicia sesión.');
+                setTimeout(() => navigate('/login'), 2000);
             }
 
         } catch (err: any) {

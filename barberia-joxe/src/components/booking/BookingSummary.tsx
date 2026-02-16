@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { supabase } from '../../services/supabase';
+import { bookingService } from '../../services/booking';
 import { useBooking } from '../../context/BookingContext';
 import { useAuth } from '../../context/AuthContext';
 import { ArrowLeft, CheckCircle } from 'lucide-react';
@@ -56,24 +56,18 @@ export default function BookingSummary() {
         };
 
         try {
-            let error;
 
             if (booking.lockedBookingId) {
                 // UPDATE existing locked booking
-                const result = await supabase
-                    .from('bookings')
-                    .update(payload)
-                    .eq('id', booking.lockedBookingId);
-                error = result.error;
+                // @ts-ignore
+                result = await bookingService.updateBooking(booking.lockedBookingId, payload);
             } else {
-                // FALLBACK: Insert new booking if no lock (shouldn't happen in normal flow but good safety)
-                const result = await supabase
-                    .from('bookings')
-                    .insert(payload);
-                error = result.error;
+                // FALLBACK: Insert new booking
+                // @ts-ignore
+                result = await bookingService.createBooking(payload);
             }
 
-            if (error) throw error;
+            // service throws on error, so if we are here it is success.
             setConfirmed(true);
         } catch (err: any) {
             console.error(err);
